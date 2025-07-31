@@ -1,19 +1,20 @@
 import argparse
 from collections import namedtuple
+from datetime import datetime
 
-# line = '172.60.244.120 - stephanie89 [2005-02-03:07:19:57 +0000] "CONNECT /blog/categories/explore HTTP/1.1" 466 957 "https://www.phillips.info/category/blog/postsabout.html" "Opera/9.71.(X11; Linux x86_64; mn-MN) Presto/2.9.190 Version/12.00"'
+# line = '172.60.244.120 - stephanie89 [03/feb/2006:07:19:57 +0000] "CONNECT /blog/categories/explore HTTP/1.1" 466 957 "https://www.phillips.info/category/blog/postsabout.html" "Opera/9.71.(X11; Linux x86_64; mn-MN) Presto/2.9.190 Version/12.00"'
 # '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"'
 #
 #              ' - '          ' ['        '] "'      '" '     ' '              ' "'           '" "'             '"'
 
 # TODO
-# 1. local_time to date time?
 # 2. create report based on common attributes
 # 3. allow a variable format that is parsed on the onset and detects delimiters automatically
 
 delimiters = (" - ", " [", '] "', '" ', ' ', ' "', '" "', '"')
 ParsedRequest = namedtuple("ParsedRequest", ["http_method", "path", "http_version"])
-Line = namedtuple("Line", ["remote_addr", "user", "local_time", "request", "status", "bytes_sent", "http_referer", "user_agent"])
+Line = namedtuple("Line", ["remote_addr", "user", "local_time", "request", "status", "bytes_sent", "http_referer",
+                           "user_agent"])
 
 
 def parse_line(line: str) -> list[str]:
@@ -35,23 +36,36 @@ def parse_line(line: str) -> list[str]:
 
     return store
 
+
 # CONNECT /blog/categories/explore HTTP/1.1
 def parse_request(request: str) -> ParsedRequest:
     parts = request.split(" ")
     return ParsedRequest(parts[0], parts[1], parts[2])
 
+# 03/feb/2006:07:19:57 +0000
+def to_datetime(raw_time: str):
+    fmt = "%d/%b/%Y:%I:%M:%S %z"
+    return datetime.strptime(raw_time, fmt)
 
 
 def marshall_line(parsed_line: list[str]) -> Line:
-    return Line(parsed_line[0], parsed_line[1], parsed_line[2], parse_request(parsed_line[3]), parsed_line[4],parsed_line[5], parsed_line[6], parsed_line[7])
+    return Line(
+        parsed_line[0], # remote_addr
+        parsed_line[1], # remote_user
+        to_datetime(parsed_line[2]), # local_time
+        parse_request(parsed_line[3]), # request
+        parsed_line[4], # status
+        parsed_line[5], # bytes_sent
+        parsed_line[6], # referer
+        parsed_line[7] # user_agent
+    )
+
 
 def read_file(file_path):
     with open(file_path, 'r') as f:
         for line in f:
             parsed_line = parse_line(line)
             yield marshall_line(parsed_line)
-
-
 
 
 if __name__ == "__main__":
@@ -65,4 +79,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     for line in read_file(args.file):
         print(line)
-gi
