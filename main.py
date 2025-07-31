@@ -1,3 +1,4 @@
+import argparse
 from collections import namedtuple
 
 # line = '172.60.244.120 - stephanie89 [2005-02-03:07:19:57 +0000] "CONNECT /blog/categories/explore HTTP/1.1" 466 957 "https://www.phillips.info/category/blog/postsabout.html" "Opera/9.71.(X11; Linux x86_64; mn-MN) Presto/2.9.190 Version/12.00"'
@@ -52,7 +53,16 @@ def read_file(file_path):
 
 
 
-if __name__ == "__main__":
-    for line in read_file("/Users/gil/dev/fake-log-gen/output/fake.log"):
-        print(line)
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog='Parse Nginx Logs')
+    parser.add_argument(
+        "--file", "-f",
+        type=str,
+        required=True,
+        help="Absolute dir path of file to parse."
+    )
+    args = parser.parse_args()
+    for line in read_file(args.file):
+        print(line)
+gi
