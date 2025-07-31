@@ -3,10 +3,6 @@ from sqlite3 import Error
 
 DB_NAME = "nginx_report.db"
 
-#TODO
-# improve table types
-# create report and print output
-
 def insert_values(conn, log_entry):
     sql = ''' INSERT INTO logs(remote_addr, user, local_time, http_method, path, http_version, status, bytes_sent, \
                                http_referer, user_agent)
