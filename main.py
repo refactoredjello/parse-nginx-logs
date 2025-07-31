@@ -1,6 +1,7 @@
 import argparse
 from collections import namedtuple
 from datetime import datetime
+from db import create_connection, insert_values
 
 # line = '172.60.244.120 - stephanie89 [03/feb/2006:07:19:57 +0000] "CONNECT /blog/categories/explore HTTP/1.1" 466 957 "https://www.phillips.info/category/blog/postsabout.html" "Opera/9.71.(X11; Linux x86_64; mn-MN) Presto/2.9.190 Version/12.00"'
 # '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"'
@@ -42,22 +43,23 @@ def parse_request(request: str) -> ParsedRequest:
     parts = request.split(" ")
     return ParsedRequest(parts[0], parts[1], parts[2])
 
+
 # 03/feb/2006:07:19:57 +0000
 def to_datetime(raw_time: str):
-    fmt = "%d/%b/%Y:%I:%M:%S %z"
+    fmt = "%d/%b/%Y:%H:%M:%S %z"
     return datetime.strptime(raw_time, fmt)
 
 
 def marshall_line(parsed_line: list[str]) -> Line:
     return Line(
-        parsed_line[0], # remote_addr
-        parsed_line[1], # remote_user
-        to_datetime(parsed_line[2]), # local_time
-        parse_request(parsed_line[3]), # request
-        parsed_line[4], # status
-        parsed_line[5], # bytes_sent
-        parsed_line[6], # referer
-        parsed_line[7] # user_agent
+        parsed_line[0],  # remote_addr
+        parsed_line[1],  # remote_user
+        to_datetime(parsed_line[2]),  # local_time
+        parse_request(parsed_line[3]),  # request
+        parsed_line[4],  # status
+        parsed_line[5],  # bytes_sent
+        parsed_line[6],  # referer
+        parsed_line[7]  # user_agent
     )
 
 
@@ -77,5 +79,7 @@ if __name__ == "__main__":
         help="Absolute dir path of file to parse."
     )
     args = parser.parse_args()
+    conn = create_connection("nginx_report.db")
+
     for line in read_file(args.file):
-        print(line)
+        insert_values(conn, line)
