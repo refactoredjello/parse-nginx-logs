@@ -1,9 +1,11 @@
 import argparse
 from collections import namedtuple
 from datetime import datetime
-from db import create_connection, insert_values
+from db import create_connection, insert_values, trunc_table, get_count
 
-# line = '172.60.244.120 - stephanie89 [03/feb/2006:07:19:57 +0000] "CONNECT /blog/categories/explore HTTP/1.1" 466 957 "https://www.phillips.info/category/blog/postsabout.html" "Opera/9.71.(X11; Linux x86_64; mn-MN) Presto/2.9.190 Version/12.00"'
+from tqdm import tqdm
+
+# '172.60.244.120 - stephanie89 [03/feb/2006:07:19:57 +0000] "CONNECT /blog/categories/explore HTTP/1.1" 466 957 "https://www.phillips.info/category/blog/postsabout.html" "Opera/9.71.(X11; Linux x86_64; mn-MN) Presto/2.9.190 Version/12.00"'
 # '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"'
 #
 #              ' - '          ' ['        '] "'      '" '     ' '              ' "'           '" "'             '"'
@@ -14,7 +16,7 @@ from db import create_connection, insert_values
 
 delimiters = (" - ", " [", '] "', '" ', ' ', ' "', '" "', '"')
 ParsedRequest = namedtuple("ParsedRequest", ["http_method", "path", "http_version"])
-Line = namedtuple("Line", ["remote_addr", "user", "local_time", "request", "status", "bytes_sent", "http_referer",
+LogLine = namedtuple("Line", ["remote_addr", "user", "local_time", "request", "status", "bytes_sent", "http_referer",
                            "user_agent"])
 
 
@@ -50,8 +52,8 @@ def to_datetime(raw_time: str):
     return datetime.strptime(raw_time, fmt)
 
 
-def marshall_line(parsed_line: list[str]) -> Line:
-    return Line(
+def marshal_line(parsed_line: list[str]) -> LogLine:
+    return LogLine(
         parsed_line[0],  # remote_addr
         parsed_line[1],  # remote_user
         to_datetime(parsed_line[2]),  # local_time
@@ -63,12 +65,15 @@ def marshall_line(parsed_line: list[str]) -> Line:
     )
 
 
-def read_file(file_path):
+def read_file(file_path, show_progress=True):
+    t = tqdm(total=0, unit=" log lines", disable=not show_progress)
     with open(file_path, 'r') as f:
         for line in f:
             parsed_line = parse_line(line)
-            yield marshall_line(parsed_line)
+            t.update()
+            yield marshal_line(parsed_line)
 
+    t.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='Parse Nginx Logs')
@@ -81,5 +86,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     conn = create_connection("nginx_report.db")
 
+    trunc_table(conn)
+    print("Parsing logs...")
     for line in read_file(args.file):
         insert_values(conn, line)
+
+    count = get_count(conn)
+    print(f"Inserted {count} lines")

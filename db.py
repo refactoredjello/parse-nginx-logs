@@ -2,9 +2,15 @@ import sqlite3
 from sqlite3 import Error
 
 DB_NAME = "nginx_report.db"
+TABLE_NAME = "logs"
+
+def get_count(conn):
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}")
+    return cursor.fetchone()[0]
 
 def insert_values(conn, log_entry):
-    sql = ''' INSERT INTO logs(remote_addr, user, local_time, http_method, path, http_version, status, bytes_sent, \
+    sql = f''' INSERT INTO {TABLE_NAME}(remote_addr, user, local_time, http_method, path, http_version, status, bytes_sent, \
                                http_referer, user_agent)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '''
     cursor = conn.cursor()
@@ -28,6 +34,16 @@ def insert_values(conn, log_entry):
         print(f"Failed to insert log entry: {e}")
 
     return cursor.lastrowid
+
+def trunc_table(conn):
+    print(f"Truncating table {TABLE_NAME}")
+    sql = f'DELETE FROM {TABLE_NAME}'
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        conn.commit()
+    except Error as e:
+        print(f"Failed to truncate table {TABLE_NAME}: {e}")
 
 
 def create_connection(db_file):
